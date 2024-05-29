@@ -1,11 +1,14 @@
 
-const load = 0.0017;
 
 // Get the name we're forming.
 const searchParams = new URLSearchParams(window.location.search);
 let render_name = "Fiona";
 if (searchParams.has("name")) {
     render_name = searchParams.get("name")
+}
+let load = 0.0017;
+if (searchParams.has("load")) {
+    load = parseFloat(searchParams.get("load"))
 }
 
 const canvas = document.getElementById("draw-here");
@@ -122,18 +125,18 @@ function draw_name() {
     ctx.font = `${textHeight}px sans-serif`
     ctx.fillStyle = "black"
     ctx.fillText(render_name, canvas.width / 2, textY, canvas.width)
-
-    return ctx
 }
 
+let first_draw = false;
 function handle_resize() {
-    if (canvas.height != canvas.clientHeight
+    if (!first_draw || canvas.height != canvas.clientHeight
         || canvas.width != canvas.clientWidth) {
+        canvas.height = canvas.clientHeight;
+        canvas.width = canvas.clientWidth;
+
         // Resized.
         draw_name()
 
-        canvas.height = canvas.clientHeight;
-        canvas.width = canvas.clientWidth;
         // Figure out how many particles to draw,
         // by a load factor.
         let count = Math.round(canvas.height * canvas.width * load)
@@ -163,6 +166,5 @@ function redraw(last_frame) {
     draw(ctx);
     window.requestAnimationFrame(redraw)
 }
-
 
 window.requestAnimationFrame(redraw)
