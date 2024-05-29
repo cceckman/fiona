@@ -1,113 +1,118 @@
 
 const canvas = document.getElementById("draw-here");
 
-class HueGradient{
-    constructor() {
-        this.sat = Math.round(Math.random() * 70 + 30);
-        this.val = Math.round(Math.random() * 70 + 30);
-        this.start_color = Math.round(Math.random() * 360);
-        this.speed = Math.round(Math.random() * 360);
-    }
-
-    gradient_for_column(ctx, height, column) {
-        const start_color = (this.start_color + column * this.speed) % 360;
-        const mid_color = (start_color + 90) % 360;
-        const end_color = (start_color + 180) % 360;
-        const start_str = `hsl(${start_color}deg, ${this.sat}%, ${this.val}%)`;
-        const mid_str = `hsl(${mid_color}deg, ${this.sat}%, ${this.val}%)`;
-        const end_str = `hsl(${end_color}deg, ${this.sat}%, ${this.val}%)`;
-
-        // console.log("colors: ", start_str, end_str)
-        // Gradient only in the vertical dimension.
-        const grad = ctx.createLinearGradient(0, 0, 0, height);
-        grad.addColorStop(0, start_str);
-        grad.addColorStop(0.5, mid_str);
-        grad.addColorStop(1, end_str);
-        return grad;
+function clamp(x) {
+    if (x < 0) {
+        return 0
+    } else if (x > 1.0) {
+        return 1.0
+    } else {
+        return x
     }
 }
 
-function to_pct(v) {
-    return Math.round(v * 100);
+let x = []
+let y = []
+let vx = []
+let vy = []
+let scales = []
+
+// TODO: Consider using a Gaussian distribution
+// instead of whatever Math.random() is
+function add_particle() {
+    x.push(Math.random())
+    y.push(Math.random())
+
+    // Pick a sign:
+    let xsign = 0;
+    let ysign = 0;
+    if (Math.random() > 0.5) {
+        xsign = -1;
+    } else {
+        xsign = 1;
+    }
+    if (Math.random() > 0.5) {
+        ysign = -1;
+    } else {
+        ysign = 1;
+    }
+    // at most this fraction of the screen 
+    // per millisecond
+    vx.push(Math.random() * 0.5 * xsign)
+    vy.push(Math.random() * 0.5 * ysign)
+
+    scales.push(1)
 }
 
-class LightnessGradient{
-    constructor() {
-        this.sat = to_pct(Math.random() * 90 + 10);
-        this.color = Math.round(Math.random() * 360);
-        // Use sin(sat) so we get a nice back-and-forth, like real yarn
-        this.start_val = Math.round(Math.random() * 360);
+function update_scales() {
+    for (let i = 0; i < x.length; i++) {
+        let xx = x[i]
+        let yy = y[i]
 
-        const a = Math.random();
-        const b = Math.random();
-        this.min_val = Math.min(a, b);
-        this.max_val = Math.max(a, b);
-        this.speed = Math.round(Math.random() * 360);
-    }
-
-    angle_to_pct(angle) {
-        let fraction = Math.sin(angle);
-        let v = this.min_val + (this.max_val - this.min_val) * fraction;
-        return to_pct(v);
-    }
-
-    gradient_for_column(ctx, height, column) {
-        // Sped is- kinda unitless?
-        const start = (this.start_val + column * this.speed);
-        const mid = start + this.speed;
-        const end = mid + this.speed;
-
-        const start_str = `hsl(${this.color}deg, ${this.sat}%,  ${this.angle_to_pct(start)}%)`;
-        const mid_str = `hsl(${this.color}deg, ${this.sat}%,    ${this.angle_to_pct(mid)}%)`;
-        const end_str = `hsl(${this.color}deg, ${this.sat}%,    ${this.angle_to_pct(end)}%)`;
-
-        console.log("colors:", start_str, mid_str, end_str)
-
-        const grad = ctx.createLinearGradient(0, 0, 0, height);
-        grad.addColorStop(0, start_str);
-        grad.addColorStop(0.5, mid_str);
-        grad.addColorStop(1, end_str);
-        return grad;
-    }
-}
-
-// Use https://stackoverflow.com/questions/4288253/html5-canvas-100-width-height-of-viewport ?
-function rerender() {
-    canvas.height = canvas.clientHeight;
-    canvas.width = canvas.clientWidth;
-    let h = canvas.height;
-    let w = canvas.width;
-    console.log("dims: ", canvas.clientHeight, canvas.clientWidth);
-    console.log("dims: ", h, w);
-    let ctx = canvas.getContext("2d");
-
-    let gradient_params = [];
-
-    const params = new URLSearchParams(window.location.search);
-    const stitchwidth = Number(params.get("stitchwidth") ?? 19);
-    const stitchheight = Number(params.get("stitchheight") ?? 13);
-    const threads = Number(params.get("threads") ?? 3);
-    const mode = params.get("mode") ?? "";
-    console.log("params:", stitchwidth, stitchheight, threads);
-
-    for (let col = 0; col < threads; col++) {
-        let constructor = LightnessGradient;
-        if(mode === "hue" || (mode === "" && Math.random() >= 0.5)) {
-            constructor = HueGradient;
-        } 
-        gradient_params.push(new constructor());
-    }
-
-    let thread = 0;
-    for(let column = 0; column < (w / stitchwidth); column++) {
-        const x0 = column * stitchwidth;
-        let gradients = gradient_params.map((g) => g.gradient_for_column(ctx, h, column));
-        for (let y0 = 0; y0 < h; y0 += stitchheight) {
-            ctx.fillStyle = gradients[thread];
-            thread = (thread + 1) % threads;
-            ctx.fillRect(x0, y0, stitchwidth, stitchheight);
+        if (xx > 0.3 && xx < 0.6 && yy > 0.3 && yy < 0.6) {
+            scales[i] = 0.1
+        } else {
+            scales[i] = 1
         }
     }
 }
 
-window.addEventListener("load", rerender);
+
+function update_one(elapsed, m, vm, i) {
+    let d = vm[i] * elapsed * scales[i];
+    let mm = m[i] + d;
+    if (mm < 0 || mm > 1.0) {
+        // Don't move on this tick,
+        // just change velocity
+        vm[i] = -vm[i];
+    } else {
+        m[i] = mm
+    }
+}
+
+function update_all(elapsed) {
+    update_scales()
+    for (let i = 0; i < x.length; i++) {
+        update_one(elapsed, x, vx, i);
+    }
+    for (let i = 0; i < y.length; i++) {
+        update_one(elapsed, y, vy, i);
+    }
+}
+
+function draw(ctx) {
+    for (let i = 0; i < x.length; i++) {
+        const min = Math.min(canvas.height, canvas.width)
+        let size = Math.min(Math.round(min * 0.1), 2)
+
+        const xx = x[i] * canvas.width
+        const yy = y[i] * canvas.height
+        ctx.beginPath()
+        ctx.ellipse(xx, yy, size, size, 0, 0, 2 * Math.PI)
+        ctx.fill()
+        ctx.closePath()
+    }
+}
+
+let particles = [];
+for (let i = 0; i < 1000; i++) {
+    add_particle()
+}
+
+let zero = document.timeline.currentTime;
+function redraw(last_frame) {
+    let elapsed = last_frame - zero;
+    zero = last_frame;
+    update_all(elapsed / 1000);
+
+    canvas.height = canvas.clientHeight;
+    canvas.width = canvas.clientWidth;
+
+    let ctx = canvas.getContext("2d")
+    ctx.fillStyle = "blue";
+    draw(ctx);
+    window.requestAnimationFrame(redraw)
+}
+
+
+window.requestAnimationFrame(redraw)
