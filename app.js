@@ -1,5 +1,15 @@
 
+const load = 0.0017;
+
+// Get the name we're forming.
+const searchParams = new URLSearchParams(window.location.search);
+let render_name = "Fiona";
+if (searchParams.has("name")) {
+    render_name = searchParams.get("name")
+}
+
 const canvas = document.getElementById("draw-here");
+const bg_canvas = document.getElementById("dont-draw-here");
 
 function clamp(x) {
     if (x < 0) {
@@ -45,11 +55,15 @@ function add_particle() {
 }
 
 function update_scales() {
-    for (let i = 0; i < x.length; i++) {
-        let xx = x[i]
-        let yy = y[i]
+    let name = bg_canvas.getContext("2d")
 
-        if (xx > 0.3 && xx < 0.6 && yy > 0.3 && yy < 0.6) {
+    for (let i = 0; i < x.length; i++) {
+        let xx = Math.round(x[i] * canvas.width);
+        let yy = Math.round(y[i] * canvas.height);
+
+        let px = name.getImageData(xx, yy, 1, 1).data;
+        // console.log("pixel data: ", px);
+        if (px[3] !== 0) {
             scales[i] = 0.1
         } else {
             scales[i] = 1
@@ -81,6 +95,8 @@ function update_all(elapsed) {
 }
 
 function draw(ctx) {
+    ctx.reset()
+    ctx.fillStyle = "blue";
     for (let i = 0; i < x.length; i++) {
         const min = Math.min(canvas.height, canvas.width)
         let size = Math.min(Math.round(min * 0.1), 2)
@@ -94,22 +110,56 @@ function draw(ctx) {
     }
 }
 
-let particles = [];
-for (let i = 0; i < 1000; i++) {
-    add_particle()
+function draw_name() {
+    bg_canvas.height = canvas.clientHeight;
+    bg_canvas.width = canvas.clientWidth;
+    let ctx = bg_canvas.getContext("2d")
+
+    let textHeight = canvas.height * 0.3;
+    let textY = (canvas.height / 2) + (textHeight / 2);
+
+    ctx.textAlign = "center"
+    ctx.font = `${textHeight}px sans-serif`
+    ctx.fillStyle = "black"
+    ctx.fillText(render_name, canvas.width / 2, textY, canvas.width)
+
+    return ctx
 }
+
+function handle_resize() {
+    if (canvas.height != canvas.clientHeight
+        || canvas.width != canvas.clientWidth) {
+        // Resized.
+        draw_name()
+
+        canvas.height = canvas.clientHeight;
+        canvas.width = canvas.clientWidth;
+        // Figure out how many particles to draw,
+        // by a load factor.
+        let count = Math.round(canvas.height * canvas.width * load)
+        while (x.length > count) {
+            x.length = count
+            y.length = count
+            vx.length = count
+            vy.length = count
+            scales.length = count
+        }
+        while (x.length < count) {
+            add_particle()
+        }
+    }
+}
+
 
 let zero = document.timeline.currentTime;
 function redraw(last_frame) {
+    handle_resize()
+
     let elapsed = last_frame - zero;
     zero = last_frame;
     update_all(elapsed / 1000);
 
-    canvas.height = canvas.clientHeight;
-    canvas.width = canvas.clientWidth;
-
     let ctx = canvas.getContext("2d")
-    ctx.fillStyle = "blue";
     draw(ctx);
     window.requestAnimationFrame(redraw)
 }

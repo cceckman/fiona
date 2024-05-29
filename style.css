@@ -1,5 +1,9 @@
+* {
+    margin: 0;
+    padding: 0;
+}
 
-* { margin:0; padding:0; } /* to remove the top and left whitespace */
+/* to remove the top and left whitespace */
 
 html,
 body {
@@ -22,4 +26,8 @@ p#float {
     width: min-content;
     padding: 0.5em;
     border-radius: 0.25em;
+}
+
+#dont-draw-here {
+    display: none;
 }
