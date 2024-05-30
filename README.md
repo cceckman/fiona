@@ -6,3 +6,7 @@ Creative Coding, 2024-05-29
 
 Neal Stephenson, _The Diamond Age_
 
+Query parameters:
+
+- `name` to set the string used
+- `load` to set the particle density -- use _small fractions_, e.g. 0.001
